@@ -93,6 +93,30 @@
       font-size: 0.94rem;
       line-height: 1.5;
     }
+    .badges {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      padding: 8px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .badge.success {
+      background: rgba(72,207,173,0.1);
+      border-color: #48cfad;
+      color: #48cfad;
+    }
+    .badge.warning {
+      background: rgba(255,107,129,0.1);
+      border-color: #ff6b81;
+      color: #ff6b81;
+    }
     .chart-section {
       display: grid;
       gap: 24px;
@@ -148,6 +172,10 @@
       <div class="title-group">
         <h1>영업 실적 대시보드</h1>
         <p class="subtitle">월별 목표 대비 실적과 달성률을 한눈에 확인하세요.</p>
+        <div class="badges">
+          <span class="badge success" id="bestMonth">최고 달성월: 계산중...</span>
+          <span class="badge warning" id="worstMonth">최저 달성월: 계산중...</span>
+        </div>
       </div>
       <div class="cards">
         <article class="card">
@@ -194,6 +222,12 @@
     const actualData = [4200, 5800, 6100, 4900, 6300, 7100, 6200, 5900, 7800, 8200, 7100, 9300];
     const rateData = actualData.map((value, index) => Math.round((value / targetData[index]) * 100));
 
+    // 최고/최저 달성월 계산
+    const maxRateIndex = rateData.indexOf(Math.max(...rateData));
+    const minRateIndex = rateData.indexOf(Math.min(...rateData));
+    const bestMonth = `${months[maxRateIndex]} (${rateData[maxRateIndex]}%)`;
+    const worstMonth = `${months[minRateIndex]} (${rateData[minRateIndex]}%)`;
+
     const totalTarget = targetData.reduce((sum, value) => sum + value, 0);
     const totalActual = actualData.reduce((sum, value) => sum + value, 0);
     const achievementRate = Math.round((totalActual / totalTarget) * 100);
@@ -201,6 +235,11 @@
     document.getElementById('totalTarget').textContent = totalTarget.toLocaleString();
     document.getElementById('totalActual').textContent = totalActual.toLocaleString();
     document.getElementById('achievementRate').textContent = `${achievementRate}%`;
+    document.getElementById('bestMonth').textContent = `최고 달성월: ${bestMonth}`;
+    document.getElementById('worstMonth').textContent = `최저 달성월: ${worstMonth}`;
+
+    // 실적 막대 색상 조건부 설정 (달성률 기준)
+    const actualColors = rateData.map(rate => rate >= 100 ? 'rgba(72,207,173,0.92)' : 'rgba(255,107,129,0.92)');
 
     const commonOptions = {
       maintainAspectRatio: false,
@@ -214,6 +253,22 @@
           borderColor: 'rgba(255,255,255,0.08)',
           borderWidth: 1,
           padding: 12,
+          callbacks: {
+            title: function(context) {
+              return context[0].label;
+            },
+            label: function(context) {
+              const index = context.dataIndex;
+              const target = targetData[index];
+              const actual = actualData[index];
+              const rate = rateData[index];
+              return [
+                `목표: ${target.toLocaleString()}만원`,
+                `실적: ${actual.toLocaleString()}만원`,
+                `달성률: ${rate}%`
+              ];
+            }
+          }
         }
       },
       scales: {
@@ -244,7 +299,7 @@
           {
             label: '실적',
             data: actualData,
-            backgroundColor: 'rgba(72,207,173,0.92)',
+            backgroundColor: actualColors,
             borderRadius: 14,
             barThickness: 20,
           }
