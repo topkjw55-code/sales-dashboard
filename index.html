@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>영업 실적 대시보드</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10131a;
+      --panel: #171f2d;
+      --panel-soft: #1f293d;
+      --text: #e7eef6;
+      --muted: #98a9c7;
+      --accent: #4f95ff;
+      --accent-2: #48cfad;
+      --danger: #ff6b81;
+      --border: rgba(255,255,255,0.08);
+      --shadow: 0 20px 50px rgba(0,0,0,0.25);
+      font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, rgba(79,149,255,0.12), transparent 30%),
+                  linear-gradient(180deg, #0c1117 0%, #10131a 100%);
+      color: var(--text);
+    }
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px 48px;
+    }
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .title-group {
+      min-width: 240px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 2.2vw, 2.6rem);
+      letter-spacing: -0.03em;
+    }
+    p.subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+    .card {
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 10px;
+      font-size: 0.92rem;
+    }
+    .card .value {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .card .value span {
+      font-size: 1rem;
+      color: var(--muted);
+    }
+    .card .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.5;
+    }
+    .chart-section {
+      display: grid;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .panel {
+      padding: 26px;
+      background: var(--panel-soft);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+    }
+    .panel h2 {
+      margin: 0 0 18px;
+      font-size: 1.2rem;
+      color: var(--text);
+    }
+    canvas {
+      width: 100% !important;
+      min-height: 360px !important;
+      height: 360px !important;
+      display: block;
+    }
+    .legend-line {
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    @media (max-width: 900px) {
+      .cards {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="title-group">
+        <h1>영업 실적 대시보드</h1>
+        <p class="subtitle">월별 목표 대비 실적과 달성률을 한눈에 확인하세요.</p>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <small>연간 총 목표</small>
+          <div class="value"><span>₩</span><strong id="totalTarget">0</strong></div>
+          <p class="note">한 해 동안 설정된 전체 영업 목표입니다.</p>
+        </article>
+        <article class="card">
+          <small>연간 총 실적</small>
+          <div class="value"><span>₩</span><strong id="totalActual">0</strong></div>
+          <p class="note">한 해 동안 실제로 달성한 총 실적입니다.</p>
+        </article>
+        <article class="card">
+          <small>연간 달성률</small>
+          <div class="value"><strong id="achievementRate">0%</strong></div>
+          <p class="note">총 실적을 목표로 나눈 퍼센트 값입니다.</p>
+        </article>
+      </div>
+    </header>
+
+    <section class="chart-section">
+      <div class="panel">
+        <h2>월별 목표 vs 실적</h2>
+        <div class="legend-line">
+          <div class="legend-item"><span class="legend-swatch" style="background:#4f95ff"></span>목표</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#48cfad"></span>실적</div>
+        </div>
+        <canvas id="barChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>월별 달성률 (%)</h2>
+        <canvas id="lineChart"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const months = [
+      '1월', '2월', '3월', '4월', '5월', '6월',
+      '7월', '8월', '9월', '10월', '11월', '12월'
+    ];
+    const targetData = [5000, 5000, 5500, 5500, 6000, 6000, 6500, 6500, 7000, 7000, 7500, 8000];
+    const actualData = [4200, 5800, 6100, 4900, 6300, 7100, 6200, 5900, 7800, 8200, 7100, 9300];
+    const rateData = actualData.map((value, index) => Math.round((value / targetData[index]) * 100));
+
+    const totalTarget = targetData.reduce((sum, value) => sum + value, 0);
+    const totalActual = actualData.reduce((sum, value) => sum + value, 0);
+    const achievementRate = Math.round((totalActual / totalTarget) * 100);
+
+    document.getElementById('totalTarget').textContent = totalTarget.toLocaleString();
+    document.getElementById('totalActual').textContent = totalActual.toLocaleString();
+    document.getElementById('achievementRate').textContent = `${achievementRate}%`;
+
+    const commonOptions = {
+      maintainAspectRatio: false,
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1f293d',
+          titleColor: '#ffffff',
+          bodyColor: '#e7eef6',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          padding: 12,
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#c2d1ff' },
+          grid: { color: 'transparent' }
+        },
+        y: {
+          ticks: { color: '#9bb0d7', precision: 0 },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          beginAtZero: true
+        }
+      }
+    };
+
+    new Chart(document.getElementById('barChart'), {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: '목표',
+            data: targetData,
+            backgroundColor: 'rgba(79,149,255,0.88)',
+            borderRadius: 14,
+            barThickness: 20,
+          },
+          {
+            label: '실적',
+            data: actualData,
+            backgroundColor: 'rgba(72,207,173,0.92)',
+            borderRadius: 14,
+            barThickness: 20,
+          }
+        ]
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          ...commonOptions.scales,
+          y: { ...commonOptions.scales.y, ticks: { ...commonOptions.scales.y.ticks, callback: value => `${value}만` } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('lineChart'), {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [
+          {
+            label: '달성률',
+            data: rateData,
+            borderColor: '#48cfad',
+            backgroundColor: 'rgba(72,207,173,0.24)',
+            tension: 0.32,
+            pointRadius: 5,
+            pointBackgroundColor: '#48cfad',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            fill: true,
+          }
+        ]
+      },
+      options: {
+        ...commonOptions,
+        scales: {
+          x: commonOptions.scales.x,
+          y: {
+            ticks: { color: '#9bb0d7', callback: value => `${value}%` },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            beginAtZero: true,
+            max: 120,
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
